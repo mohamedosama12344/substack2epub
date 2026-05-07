@@ -7,11 +7,6 @@ pipeline {
 
     stages {
 
-        stage('Clone Repository') {
-            steps {
-                git 'https://github.com/mohamedosama12344/substack2epub.git'
-            }
-        }
 
         stage('Create Virtual Environment') {
             steps {
