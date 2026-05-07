@@ -127,4 +127,4 @@ def serve_file(token):
 if __name__ == "__main__":
     print("Starting substack2epub web interface...")
     print("Open http://localhost:5000 in your browser")
-    app.run(debug=False, port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=False)
