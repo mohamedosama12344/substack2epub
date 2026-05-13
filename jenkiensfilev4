@@ -51,9 +51,9 @@ pipeline {
 
                     sleep 5
                     if kill -0 $APP_PID 2>/dev/null; then
-                        HOST_IP=$(hostname -I | tr ' ' '\n' | grep -v '^127\.' | grep -v '^172\.' | head -1)
+                        HOST_IP=$(hostname -I | awk "{for(i=1;i<=NF;i++) if(\$i !~ /^172\\./ && \$i !~ /^127\\./) {print \$i; exit}}")
                         if [ -z "$HOST_IP" ]; then
-                            HOST_IP=$(hostname -I | awk '{print $1}')
+                            HOST_IP=$(hostname -I | awk "{print \$1}")
                         fi
                         echo "=========================================="
                         echo "App started successfully with PID $APP_PID"
@@ -71,9 +71,9 @@ pipeline {
     post {
         success {
             sh '''
-                HOST_IP=$(hostname -I | tr ' ' '\n' | grep -v '^127\.' | grep -v '^172\.' | head -1)
+                HOST_IP=$(hostname -I | awk "{for(i=1;i<=NF;i++) if(\$i !~ /^172\\./ && \$i !~ /^127\\./) {print \$i; exit}}")
                 if [ -z "$HOST_IP" ]; then
-                    HOST_IP=$(hostname -I | awk '{print $1}')
+                    HOST_IP=$(hostname -I | awk "{print \$1}")
                 fi
                 echo "=========================================="
                 echo "Pipeline succeeded: Flask app deployed!"
