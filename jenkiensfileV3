@@ -38,41 +38,25 @@ pipeline {
             }
         }
         stage('Deploy') {
-            steps {
-                sh '''
-                    # Kill any existing instance
-                    pkill -f "python3 app.py" || true
+    steps {
+        sh '''
+            # Kill any existing instance
+            pkill -f "python3 app.py" || true
 
-                    cd /var/jenkins_home/workspace/trail2
-                    . venv/bin/activate
+            cd /var/jenkins_home/workspace/trail2
+            . venv/bin/activate
 
-                    # Run fully detached, immune to Jenkins cleanup
-                    nohup python3 app.py > flask.log 2>&1 &
-                    echo $! > app.pid
-                    disown $!
+            # Use bash explicitly so disown works
+            bash -c "nohup python3 app.py > flask.log 2>&1 & echo \$! > app.pid && disown \$!"
 
-                    sleep 10
-                    if curl -sf http://localhost:$DEPLOY_PORT > /dev/null; then
-                        echo "App is live on port $DEPLOY_PORT"
-                    else
-                        echo "App did not respond — check flask.log"
-                        cat flask.log
-                        exit 1
-                    fi
-                '''
-            }
-        }
-    }
-    post {
-        success {
-            echo 'Pipeline succeeded: Flask app deployed successfully!'
-        }
-        failure {
-            sh 'cat /var/jenkins_home/workspace/trail2/flask.log || true'
-            echo 'Pipeline failed! Check logs above.'
-        }
-        always {
-            archiveArtifacts artifacts: 'flask.log', allowEmptyArchive: true
-        }
+            sleep 10
+            if curl -sf http://localhost:$DEPLOY_PORT > /dev/null; then
+                echo "App is live on port $DEPLOY_PORT"
+            else
+                echo "App did not respond — check flask.log"
+                cat flask.log
+                exit 1
+            fi
+        '''
     }
 }
