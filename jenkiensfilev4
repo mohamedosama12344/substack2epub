@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    environment {
+        VENV = "venv"
+        DEPLOY_PORT = "5000"
+        APP_NAME = "flask-app"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo "Checked out branch: ${env.BRANCH_NAME ?: 'default'}"
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'python3 -m venv $VENV'
+                sh '''
+                    . $VENV/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+                echo 'Build complete: virtual environment ready and dependencies installed.'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh '''
+                    . $VENV/bin/activate
+                    pip install pytest pytest-cov
+                    pytest tests/ --tb=short --junitxml=test-results.xml || true
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'test-results.xml'
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh '''
+                    pkill -f "python3 app.py" || true
+                    cd /var/jenkins_home/workspace/trail2
+                    . venv/bin/activate
+
+                    export JENKINS_NODE_COOKIE=dontKillMe
+                    nohup python3 app.py > flask.log 2>&1 &
+                    APP_PID=$!
+                    echo $APP_PID > app.pid
+
+                    sleep 5
+                    if kill -0 $APP_PID 2>/dev/null; then
+                        HOST_IP=$(ip route get 1 | awk '{print $NF; exit}')
+                        echo "=========================================="
+                        echo "App started successfully with PID $APP_PID"
+                        echo "Access your app at: http://$HOST_IP:5000"
+                        echo "=========================================="
+                    else
+                        echo "App failed to start"
+                        cat flask.log
+                        exit 1
+                    fi
+                '''
+            }
+        }
+    }
+    post {
+        success {
+            sh '''
+                HOST_IP=$(ip route get 1 | awk '{print $NF; exit}')
+                echo "=========================================="
+                echo "Pipeline succeeded: Flask app deployed!"
+                echo "Access your app at: http://$HOST_IP:5000"
+                echo "=========================================="
+            '''
+        }
+        failure {
+            sh 'cat /var/jenkins_home/workspace/trail2/flask.log || true'
+            echo 'Pipeline failed! Check logs above.'
+        }
+        always {
+            archiveArtifacts artifacts: 'flask.log', allowEmptyArchive: true
+        }
+    }
+}
