@@ -51,7 +51,21 @@ pipeline {
 
                     sleep 5
                     if kill -0 $APP_PID 2>/dev/null; then
-                        HOST_IP=$(python3 -c "import socket; s=socket.socket(); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()")
+                        HOST_IP=$(python3 - <<EOF
+import struct, socket
+with open("/proc/net/route") as f:
+    for line in f.readlines()[1:]:
+        fields = line.strip().split()
+        if fields[1] == "00000000":
+            gateway = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+            iface = fields[0]
+            import subprocess
+            result = subprocess.check_output(["cat", "/proc/net/fib_trie"]).decode()
+            break
+    # Get host IP from hostname
+    print(socket.gethostbyname(socket.gethostname()))
+EOF
+)
                         echo "=========================================="
                         echo "App started successfully with PID $APP_PID"
                         echo "Access your app at: http://$HOST_IP:5000"
@@ -68,7 +82,11 @@ pipeline {
     post {
         success {
             sh '''
-                HOST_IP=$(python3 -c "import socket; s=socket.socket(); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()")
+                HOST_IP=$(python3 - <<EOF
+import socket
+print(socket.gethostbyname(socket.gethostname()))
+EOF
+)
                 echo "=========================================="
                 echo "Pipeline succeeded: Flask app deployed!"
                 echo "Access your app at: http://$HOST_IP:5000"
