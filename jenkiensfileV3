@@ -38,23 +38,36 @@ pipeline {
             }
         }
         stage('Deploy') {
-    steps {
-        sh '''
-            pkill -f "python3 app.py" || true
-            cd /var/jenkins_home/workspace/trail2
-            . venv/bin/activate
-            nohup python3 app.py > flask.log 2>&1 &
-            APP_PID=$!
-            echo $APP_PID > app.pid
-            sleep 5
-            if kill -0 $APP_PID 2>/dev/null; then
-                echo "App started with PID $APP_PID"
-            else
-                echo "App failed to start"
-                cat flask.log
-                exit 1
-            fi
-        '''
+            steps {
+                sh '''
+                    pkill -f "python3 app.py" || true
+                    cd /var/jenkins_home/workspace/trail2
+                    . venv/bin/activate
+                    nohup python3 app.py > flask.log 2>&1 &
+                    APP_PID=$!
+                    echo $APP_PID > app.pid
+                    sleep 5
+                    if kill -0 $APP_PID 2>/dev/null; then
+                        echo "App started with PID $APP_PID"
+                    else
+                        echo "App failed to start"
+                        cat flask.log
+                        exit 1
+                    fi
+                '''
+            }
+        }
     }
-}
+    post {
+        success {
+            echo 'Pipeline succeeded: Flask app deployed successfully!'
+        }
+        failure {
+            sh 'cat /var/jenkins_home/workspace/trail2/flask.log || true'
+            echo 'Pipeline failed! Check logs above.'
+        }
+        always {
+            archiveArtifacts artifacts: 'flask.log', allowEmptyArchive: true
+        }
+    }
 }
