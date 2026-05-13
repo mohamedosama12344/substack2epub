@@ -43,9 +43,12 @@ pipeline {
                     pkill -f "python3 app.py" || true
                     cd /var/jenkins_home/workspace/trail2
                     . venv/bin/activate
+
+                    export JENKINS_NODE_COOKIE=dontKillMe
                     nohup python3 app.py > flask.log 2>&1 &
                     APP_PID=$!
                     echo $APP_PID > app.pid
+
                     sleep 5
                     if kill -0 $APP_PID 2>/dev/null; then
                         echo "App started with PID $APP_PID"
