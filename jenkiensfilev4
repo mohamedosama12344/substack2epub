@@ -51,10 +51,7 @@ pipeline {
 
                     sleep 5
                     if kill -0 $APP_PID 2>/dev/null; then
-                        HOST_IP=$(hostname -I | awk "{for(i=1;i<=NF;i++) if(\$i !~ /^172\\./ && \$i !~ /^127\\./) {print \$i; exit}}")
-                        if [ -z "$HOST_IP" ]; then
-                            HOST_IP=$(hostname -I | awk "{print \$1}")
-                        fi
+                        HOST_IP=$(python3 -c "import socket; s=socket.socket(); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()")
                         echo "=========================================="
                         echo "App started successfully with PID $APP_PID"
                         echo "Access your app at: http://$HOST_IP:5000"
@@ -71,10 +68,7 @@ pipeline {
     post {
         success {
             sh '''
-                HOST_IP=$(hostname -I | awk "{for(i=1;i<=NF;i++) if(\$i !~ /^172\\./ && \$i !~ /^127\\./) {print \$i; exit}}")
-                if [ -z "$HOST_IP" ]; then
-                    HOST_IP=$(hostname -I | awk "{print \$1}")
-                fi
+                HOST_IP=$(python3 -c "import socket; s=socket.socket(); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()")
                 echo "=========================================="
                 echo "Pipeline succeeded: Flask app deployed!"
                 echo "Access your app at: http://$HOST_IP:5000"
